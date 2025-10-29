@@ -1,8 +1,8 @@
 {
-  "name": "my-module",
+  "name": "@laioutr-app/emporix",
   "version": "1.0.0",
-  "description": "My new Nuxt module",
-  "repository": "your-org/my-module",
+  "description": "Emporix integration for laioutr.",
+  "repository": "laioutr/app-emporix",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -42,6 +42,7 @@
     "@laioutr-core/kit": "^0.7.8",
     "@laioutr-core/ui": "^0.19.7",
     "@laioutr-core/ui-kit": "^0.19.7",
+    "@screeny05/ts-money": "1.1.0",
     "@nuxt/kit": "3.16.2",
     "@vueuse/core": "13.1.0",
     "pinia": "3.0.2",

@@ -6,7 +6,12 @@ import { registerLaioutrApp } from "@laioutr-core/kit";
 /**
  * The options the module adds to the nuxt.config.ts.
  */
-export interface ModuleOptions {}
+export interface ModuleOptions {
+  baseURL: string;
+  clientId: string;
+  clientSecret: string;
+  tenant: string;
+}
 
 /**
  * The config the module adds to nuxt.runtimeConfig.public['@laioutr-app/commercetools']
@@ -25,7 +30,10 @@ export default defineNuxtModule<ModuleOptions>({
     configKey: name, // configKey must match package name
   },
   // Default configuration options of the Nuxt module
-  defaults: {},
+  defaults: {
+    baseURL: "https://api.emporix.io",
+    tenant: "laioutr",
+  },
   async setup(_options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
     const resolveRuntimeModule = (path: string) => resolve("./runtime", path);
