@@ -2,7 +2,8 @@ import { getCookie, setCookie, useUserlandCache } from "#imports";
 import type { TokenResponse } from "../types/auth";
 import type { H3Event } from "h3";
 import type { Category } from "../types/category";
-import type { Product } from "../types/product";
+import type { Product, ProductAssignment } from "../types/product";
+import type { Cart } from "../types/cart";
 
 export class EmporixSDK {
   private baseURL: string;
@@ -151,6 +152,12 @@ export class EmporixSDK {
         });
   }
 
+  async listCategoryAssignments(categoryId: string) {
+    return this.call<ProductAssignment[]>(
+      `/category/${this.tenant}/categories/${categoryId}/assignments?assignmentType=PRODUCTwithSubcategories=false&pageNumber=1&pageSize=60&sort=name:desc`
+    );
+  }
+
   async getCategory(categoryId: string) {
     return this.call<Category>(
       `/category/${this.tenant}/categories/${categoryId}`
@@ -210,5 +217,59 @@ export class EmporixSDK {
         })),
       },
     });
+  }
+
+  /* Carts */
+  async assertHasCart({
+    siteCode,
+    currency,
+  }: {
+    siteCode: string;
+    currency: string;
+  }) {
+    try {
+      const cart = await this.call<Cart>(`/cart/${this.tenant}/carts`, {
+        method: "GET",
+      });
+
+      return cart;
+    } catch {
+      // Cart does not exist.. create a new one
+      const cart = await this.call<Cart>(`/cart/${this.tenant}/carts`, {
+        method: "POST",
+        body: { siteCode, currency },
+      });
+
+      return cart;
+    }
+  }
+
+  async getCartById(cartId: string) {
+    return this.call<Cart>(
+      `/cart/${this.tenant}/carts/${cartId}?expandCalculation=true`
+    );
+  }
+
+  async addItemToCart({
+    items,
+    siteCode,
+    currency,
+  }: {
+    items: Array<{ yrn: string; quantity: number }>;
+    siteCode: string;
+    currency: string;
+  }) {
+    const cart = await this.assertHasCart({ siteCode, currency });
+
+    return this.call(
+      `cart/${this.tenant}/carts/${cart.id}/itemsBatch?siteCode=${siteCode}`,
+      {
+        method: "POST",
+        body: items.map((item) => ({
+          itemYrn: item.yrn,
+          quantity: item.quantity,
+        })),
+      }
+    );
   }
 }

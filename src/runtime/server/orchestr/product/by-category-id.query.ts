@@ -1,13 +1,17 @@
-import { ProductsByCategorySlugQuery } from "@laioutr-core/canonical-types/ecommerce";
+import { ProductsByCategoryIdQuery } from "@laioutr-core/canonical-types/ecommerce";
 import { defineEmporixQuery } from "../../middleware";
 import { productsPassthroughToken } from "../../const/passthroughTokens";
 
 export default defineEmporixQuery(
-  ProductsByCategorySlugQuery,
-  async ({ context, passthrough }) => {
+  ProductsByCategoryIdQuery,
+  async ({ context, passthrough, input }) => {
     const { emporixClient } = context;
 
-    const products = await emporixClient.searchProducts({});
+    const { categoryId } = input;
+
+    const res = await emporixClient.listCategoryAssignments(categoryId);
+
+    const products = res.flatMap((r) => r.ref);
 
     passthrough.set(productsPassthroughToken, products);
 
