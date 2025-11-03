@@ -13,5 +13,5 @@ export interface Product {
 export interface ProductAssignment {
   id: string;
   categoryId: string;
-  ref: Product;
+  ref: Pick<Product, "id"> & Partial<Omit<Product, "id">>;
 }

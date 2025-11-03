@@ -13,29 +13,34 @@ export default defineEmporixComponentResolver({
     const entities = await Promise.all(
       entityIds.map(async (cartId) => {
         const cart = await emporixClient.getCartById(cartId as string);
-        console.log(cart);
 
         return $entity({
           id: cartId,
 
           base: () => ({
-            totalQuantity: 0,
+            totalQuantity: cart.items.reduce(
+              (acc, curr) => acc + curr.effectiveQuantity,
+              0
+            ),
             discountCodes: [],
           }),
 
           cost: () => ({
             subtotal: {
-              amount: 0,
-              currency,
+              amount: cart.subTotalPrice?.amount ?? 0,
+              currency: cart.subTotalPrice?.currency ?? currency,
             },
-            subtotalIsEstimated: false,
-            total: { amount: 0, currency },
-            totalIsEstimated: false,
+            subtotalIsEstimated: !cart.subTotalPrice,
+            total: {
+              amount: cart.totalPrice?.amount ?? 0,
+              currency: cart.totalPrice?.currency ?? currency,
+            },
+            totalIsEstimated: !cart.totalPrice,
             totalTax: {
-              amount: 0,
-              currency,
+              amount: cart.totalTax?.amount ?? 0,
+              currency: cart.totalTax?.currency ?? currency,
             },
-            totalTaxIsEstimated: false,
+            totalTaxIsEstimated: !cart.totalTax,
             taxesIncluded: true,
             totalDuty: { amount: 0, currency: "USD" },
             totalDutyIsEstimated: true,

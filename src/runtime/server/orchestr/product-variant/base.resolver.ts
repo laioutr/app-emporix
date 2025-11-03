@@ -39,56 +39,96 @@ export default defineEmporixComponentResolver({
             q: `id:(${entityIds.join(",")})`,
           })) ?? [];
 
-    // const prices = await emporixClient.retrieveProductsPrices({
-    //   productIds: entityIds,
-    //   site: "main",
-    //   currency,
-    // });
-    // console.log(prices);
+    const prices = await emporixClient.retrieveProductsPrices({
+      productIds: ["103155591"],
+    });
+    console.log(prices);
 
-    const entities = products.map((product) =>
-      $entity({
-        id: product.id,
+    const entities = await Promise.all(
+      products.map(async (product) => {
+        const availability = await emporixClient.retrieveProductAvailability(
+          product.id
+        );
 
-        base: () => ({
-          name: resolveLocalized(product.name, locale),
-          sku: product.code,
-        }),
+        const priceInfo =
+          prices.find((price) => product.id === price.itemId.id) || prices[0];
 
-        info: () => ({
-          image: mapImageFragment(product.media[0]),
-        }),
+        const isOnSale = !!(
+          priceInfo && priceInfo.effectiveValue < priceInfo.originalValue
+        );
 
-        // TODO: Map proper availability
-        availability: () => ({
-          status: "inStock",
-          quantity: 999,
-        }),
+        const price = Money.fromDecimal(
+          priceInfo?.effectiveValue ?? 0,
+          currency
+        );
 
-        // TODO: Map proper pricing
-        prices: () => ({
-          price: Money.fromDecimal(200, currency),
-          isStartingFrom: false,
-          strikethroughPrice: undefined,
-          isOnSale: false,
-          savingsPercent: 0,
-        }),
+        const strikethroughPrice = isOnSale
+          ? Money.fromDecimal({ amount: priceInfo.effectiveValue, currency })
+          : undefined;
 
-        // TODO: Map proper quanity prices
-        quantityPrices: () => [],
+        const savingsPercent = strikethroughPrice
+          ? 100 - price.percentageOf(strikethroughPrice)
+          : undefined;
 
-        // TODO: Map proper quantity rules
-        quantityRule: () => ({
-          min: 0,
-          max: Number.MAX_SAFE_INTEGER,
-          increment: 1,
-        }),
+        return $entity({
+          id: product.id,
 
-        // TODO: Map proper shipping
-        shipping: () => ({ required: false }),
+          base: () => ({
+            name: resolveLocalized(product.name, locale),
+            sku: product.code,
+          }),
 
-        // TODO: Map proper options
-        options: () => ({ selected: [] }),
+          info: () => ({
+            image: mapImageFragment(product.media[0]),
+          }),
+
+          availability: () => ({
+            status: availability.available ? "inStock" : "outOfStock",
+            quantity: availability.stockLevel,
+          }),
+
+          prices: () => ({
+            price,
+            isStartingFrom: isOnSale,
+            strikethroughPrice: strikethroughPrice,
+            isOnSale,
+            savingsPercent,
+          }),
+
+          quantityPrices: () =>
+            priceInfo.priceModel.tierDefinition.tiers
+              .filter(
+                (tier) => !!priceInfo.tierValues.find((t) => t.id === tier.id)
+              )
+              .map((tier) => {
+                const tierInfo = priceInfo.tierValues.find(
+                  (t) => t.id === tier.id
+                )!;
+                const tierPrice = Money.fromDecimal({
+                  amount: tierInfo.priceValue,
+                  currency,
+                });
+
+                return {
+                  quantity: tier.minQuantity.quantity,
+                  price: tierPrice,
+                  savingsPercent: 1 - price.percentageOf(tierPrice),
+                };
+              }),
+
+          // TODO: Map proper quantity rules
+          quantityRule: () => ({
+            min: 0,
+            max: Number.MAX_SAFE_INTEGER,
+            increment: 1,
+          }),
+
+          // TODO: Map proper shipping
+          shipping: () => ({ required: false }),
+
+          // TODO: Map proper options
+          options: () => ({ selected: [] }),
+        });
       })
     );
 

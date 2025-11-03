@@ -13,7 +13,6 @@ export default defineEmporixQuery(
       parentCategoryId: alias === "root" ? undefined : alias,
     });
 
-    //FIXME: Current Emporix API is bugged. It still returns child categories even though we tell it not to
     const filtered =
       alias === "root"
         ? categories.filter((category) => !category.parentId)

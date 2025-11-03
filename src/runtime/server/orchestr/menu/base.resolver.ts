@@ -27,7 +27,7 @@ export default defineEmporixComponentResolver({
             type: "reference",
             reference: {
               type: "category",
-              slug: category.code ?? "",
+              slug: category.code || category.id,
               id: category.id ?? "",
             },
             childIds: (category.subcategories ?? []).map((child) => child.id),

@@ -37,15 +37,28 @@ export default defineEmporixComponentResolver({
             q: `id:(${entityIds.join(",")})`,
           })) ?? [];
 
-    // const prices = await emporixClient.retrieveProductsPrices({
-    //   productIds: entityIds,
-    //   site: "main",
-    //   currency,
-    // });
-    // console.log(prices);
+    const prices = await emporixClient.retrieveProductsPrices({
+      productIds: entityIds,
+    });
 
-    const entities = products.map((product) =>
-      $entity({
+    const entities = products.map((product) => {
+      const priceInfo = prices.find((price) => product.id === price.itemId.id);
+
+      const isOnSale = !!(
+        priceInfo && priceInfo.effectiveValue < priceInfo.originalValue
+      );
+
+      const price = Money.fromDecimal(priceInfo?.effectiveValue ?? 0, currency);
+
+      const strikethroughPrice = isOnSale
+        ? Money.fromDecimal({ amount: priceInfo.effectiveValue, currency })
+        : undefined;
+
+      const savingsPercent = strikethroughPrice
+        ? 100 - price.percentageOf(strikethroughPrice)
+        : undefined;
+
+      return $entity({
         id: product.id,
 
         base: () => ({
@@ -68,11 +81,11 @@ export default defineEmporixComponentResolver({
 
         // TODO: Map proper pricing
         prices: () => ({
-          price: Money.fromDecimal(200, currency),
-          isStartingFrom: false,
-          strikethroughPrice: undefined,
-          isOnSale: false,
-          savingsPercent: 0,
+          price,
+          isStartingFrom: isOnSale,
+          strikethroughPrice,
+          isOnSale,
+          savingsPercent,
         }),
 
         seo: () => ({
@@ -81,8 +94,8 @@ export default defineEmporixComponentResolver({
         }),
 
         flags: () => [],
-      })
-    );
+      });
+    });
 
     return { entities };
   },

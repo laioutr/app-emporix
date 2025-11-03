@@ -1,16 +1,26 @@
-import { ProductsByCategoryIdQuery } from "@laioutr-core/canonical-types/ecommerce";
+import { ProductsByCategorySlugQuery } from "@laioutr-core/canonical-types/ecommerce";
 import { defineEmporixQuery } from "../../middleware";
 import { productsPassthroughToken } from "../../const/passthroughTokens";
+import { flattenTree } from "../../utils/trees";
+import { CategoryNotFoundError } from "../menu/errors/category-not-found.error";
 
 export default defineEmporixQuery(
-  ProductsByCategoryIdQuery,
+  ProductsByCategorySlugQuery,
   async ({ context, passthrough, input, pagination, sorting }) => {
     const { emporixClient } = context;
 
-    const { categoryId } = input;
+    const { categorySlug } = input;
+
+    const categories = await emporixClient.listCategories({});
+
+    const category = flattenTree(categories, "subcategories").find(
+      (c) => c.code === categorySlug || c.id === categorySlug
+    );
+
+    if (!category) throw new CategoryNotFoundError(categorySlug);
 
     const assignments = await emporixClient.listCategoryAssignments(
-      categoryId,
+      category.id,
       {
         pageNumber: pagination.page,
         pageSize: pagination.limit,

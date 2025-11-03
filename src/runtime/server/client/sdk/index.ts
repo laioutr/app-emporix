@@ -4,6 +4,8 @@ import type { H3Event } from "h3";
 import type { Category } from "../types/category";
 import type { Product, ProductAssignment } from "../types/product";
 import type { Cart } from "../types/cart";
+import type { Price } from "../types/price";
+import type { Availability } from "../types/availability";
 
 export class EmporixSDK {
   private baseURL: string;
@@ -33,10 +35,12 @@ export class EmporixSDK {
   private async call<T = unknown>(
     url: string,
     {
+      version = "v2",
       method = "GET",
       params,
       body,
     }: {
+      version?: string;
       method?: "GET" | "POST";
       params?: Record<string, unknown>;
       body?: unknown;
@@ -64,6 +68,7 @@ export class EmporixSDK {
             : {}),
           Accept: "application/json, text/plain, */*",
           "User-Agent": "Mozilla/5.0 (Node fetch)",
+          "X-Version": version,
           ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
         },
         body: JSON.stringify(body),
@@ -133,28 +138,32 @@ export class EmporixSDK {
   }
 
   /* Categories */
-  async listCategories({
-    parentCategoryId,
-    onlyRoots = true,
-    depth = 3,
-  }: {
-    parentCategoryId?: string;
-    onlyRoots?: boolean;
-    depth?: number;
-  }) {
+  async listCategories({ parentCategoryId }: { parentCategoryId?: string }) {
     return parentCategoryId
       ? this.call<Category[]>(
-          `/category/${this.tenant}/categories/${parentCategoryId}/subcategories`,
-          { params: { depth } }
+          `/category/${this.tenant}/category-trees/${parentCategoryId}`
         )
-      : this.call<Category[]>(`/category/${this.tenant}/categories`, {
-          params: { showRoots: onlyRoots },
-        });
+      : this.call<Category[]>(`/category/${this.tenant}/category-trees`, {});
   }
 
-  async listCategoryAssignments(categoryId: string) {
+  async listCategoryAssignments(
+    categoryId: string,
+    {
+      pageNumber,
+      pageSize,
+      sort,
+    }: { pageNumber?: number; pageSize?: number; sort?: string }
+  ) {
     return this.call<ProductAssignment[]>(
-      `/category/${this.tenant}/categories/${categoryId}/assignments?assignmentType=PRODUCTwithSubcategories=false&pageNumber=1&pageSize=60&sort=name:desc`
+      `/category/${this.tenant}/categories/${categoryId}/assignments?assignmentType=PRODUCT`,
+      {
+        params: {
+          withSubcategories: true,
+          pageNumber,
+          pageSize,
+          sort,
+        },
+      }
     );
   }
 
@@ -197,79 +206,82 @@ export class EmporixSDK {
 
   async retrieveProductsPrices({
     productIds,
-    site = "main",
-    currency = "EUR",
   }: {
     productIds: string[];
     site?: string;
     currency?: string;
   }) {
-    return this.call(`/price/${this.tenant}/match-prices`, {
-      method: "POST",
-      body: {
-        siteCode: site,
-        targetCurrency: currency,
-        items: productIds.map((id) => ({
-          itemId: {
-            itemType: "PRODUCT",
-            id,
-          },
-        })),
-      },
-    });
+    return this.call<Price[]>(
+      `/price/${this.tenant}/match-prices-by-context
+`,
+      {
+        method: "POST",
+        body: {
+          items: productIds.map((id) => ({
+            itemId: {
+              itemType: "PRODUCT",
+              id,
+            },
+            quantity: {
+              quantity: 1,
+            },
+          })),
+        },
+      }
+    );
+  }
+
+  async retrieveProductAvailability(productId: string) {
+    return this.call<Availability>(
+      `/availability/${this.tenant}/availability/${productId}/main`
+    );
   }
 
   /* Carts */
-  async assertHasCart({
-    siteCode,
-    currency,
-  }: {
-    siteCode: string;
-    currency: string;
-  }) {
-    try {
-      const cart = await this.call<Cart>(`/cart/${this.tenant}/carts`, {
-        method: "GET",
-      });
+  async assertHasCart({ siteCode }: { siteCode: string }) {
+    const cart = await this.call<Cart>(`/cart/${this.tenant}/carts`, {
+      method: "GET",
+      params: {
+        siteCode,
+        create: true,
+      },
+    });
 
-      return cart;
-    } catch {
-      // Cart does not exist.. create a new one
-      const cart = await this.call<Cart>(`/cart/${this.tenant}/carts`, {
-        method: "POST",
-        body: { siteCode, currency },
-      });
-
-      return cart;
-    }
+    return cart;
   }
 
   async getCartById(cartId: string) {
-    return this.call<Cart>(
-      `/cart/${this.tenant}/carts/${cartId}?expandCalculation=true`
-    );
+    return this.call<Cart>(`/cart/${this.tenant}/carts/${cartId}`, {
+      params: { expandCalculation: true },
+    });
   }
 
   async addItemToCart({
     items,
     siteCode,
-    currency,
   }: {
-    items: Array<{ yrn: string; quantity: number }>;
+    items: Array<{
+      yrn: string;
+      price: {
+        priceId: string;
+        effectiveAmount: number;
+        originalAmount: number;
+        currency: string;
+      };
+      quantity: number;
+    }>;
     siteCode: string;
-    currency: string;
   }) {
-    const cart = await this.assertHasCart({ siteCode, currency });
+    const cart = await this.assertHasCart({ siteCode });
 
-    return this.call(
-      `cart/${this.tenant}/carts/${cart.id}/itemsBatch?siteCode=${siteCode}`,
-      {
-        method: "POST",
-        body: items.map((item) => ({
-          itemYrn: item.yrn,
-          quantity: item.quantity,
-        })),
-      }
-    );
+    return this.call(`/cart/${this.tenant}/carts/${cart.id}/itemsBatch`, {
+      params: { siteCode },
+      method: "POST",
+      body: items.map((item) => ({
+        itemYrn: item.yrn,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    });
   }
 }
