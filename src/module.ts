@@ -2,7 +2,10 @@ import { defineNuxtModule, createResolver, installModule } from "@nuxt/kit";
 import { defu } from "defu";
 import { name, version } from "../package.json";
 import { registerLaioutrApp } from "@laioutr-core/kit";
-
+import type {
+  AvailableFilter,
+  AvailableSorting,
+} from "@laioutr-core/orchestr/types";
 /**
  * The options the module adds to the nuxt.config.ts.
  */
@@ -11,6 +14,8 @@ export interface ModuleOptions {
   clientId: string;
   clientSecret: string;
   tenant: string;
+  availableFilters: Array<AvailableFilter>;
+  availableSortings: Array<AvailableSorting>;
 }
 
 /**

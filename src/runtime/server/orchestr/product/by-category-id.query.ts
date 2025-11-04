@@ -5,7 +5,7 @@ import { productsPassthroughToken } from "../../const/passthroughTokens";
 export default defineEmporixQuery(
   ProductsByCategoryIdQuery,
   async ({ context, passthrough, input, pagination, sorting }) => {
-    const { emporixClient } = context;
+    const { emporixClient, availableFilters, availableSortings } = context;
 
     const { categoryId } = input;
 
@@ -24,6 +24,10 @@ export default defineEmporixQuery(
 
     passthrough.set(productsPassthroughToken, products);
 
-    return { ids: products.map((product) => product.id) };
+    return {
+      ids: products.map((product) => product.id),
+      availableFilters,
+      availableSortings,
+    };
   }
 );

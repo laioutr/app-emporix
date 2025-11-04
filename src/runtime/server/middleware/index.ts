@@ -1,10 +1,13 @@
-import { defineOrchestr } from "#imports";
+import { defineOrchestr, useRuntimeConfig } from "#imports";
 import { name } from "../../../../package.json";
 import { emporixClientFactory } from "../client";
 
 export const defineEmporix = defineOrchestr
   .meta({ app: name })
   .extendRequest(async ({ event }) => {
+    const { availableFilters, availableSortings } =
+      useRuntimeConfig()["@laioutr-app/emporix"];
+
     const emporixClient = emporixClientFactory();
     await emporixClient.assertIsAuthOrAnon({ event });
 
@@ -13,7 +16,7 @@ export const defineEmporix = defineOrchestr
     // await emporixAdminClient.assertIsAdminAuth();
 
     return {
-      context: { emporixClient },
+      context: { emporixClient, availableFilters, availableSortings },
     };
   });
 

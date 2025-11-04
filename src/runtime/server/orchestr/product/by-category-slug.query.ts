@@ -7,7 +7,7 @@ import { CategoryNotFoundError } from "../menu/errors/category-not-found.error";
 export default defineEmporixQuery(
   ProductsByCategorySlugQuery,
   async ({ context, passthrough, input, pagination, sorting }) => {
-    const { emporixClient } = context;
+    const { emporixClient, availableFilters, availableSortings } = context;
 
     const { categorySlug } = input;
 
@@ -34,6 +34,10 @@ export default defineEmporixQuery(
 
     passthrough.set(productsPassthroughToken, products);
 
-    return { ids: products.map((product) => product.id) };
+    return {
+      ids: products.map((product) => product.id),
+      availableFilters,
+      availableSortings,
+    };
   }
 );
