@@ -4,7 +4,7 @@ import laioutrrc from "../laioutrrc.json";
 const appsToUninstall = ["@laioutr-app/ui"];
 
 // Uncomment the below line if you don't want/need Shopify
-// appsToUninstall.push("@laioutr-app/shopify")
+appsToUninstall.push("@laioutr-app/shopify");
 
 const clean_laioutrrc = {
   ...laioutrrc,
@@ -31,6 +31,12 @@ export default defineNuxtConfig({
     bundle: {
       optimizeTranslationDirective: false,
     },
+  },
+  "@laioutr-app/emporix": {
+    baseURL: "https://api.emporix.io",
+    clientId: import.meta.env.EMPORIX_CLIENT_ID,
+    clientSecret: import.meta.env.EMPORIX_CLIENT_SECRET,
+    tenant: "laioutr",
   },
   devtools: { enabled: true },
   compatibilityDate: "2025-09-11",
